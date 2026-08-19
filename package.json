@@ -1,0 +1,43 @@
+{
+  "name": "floppy-cat",
+  "version": "0.1.0",
+  "description": "A tiny always-on-top desktop focus game with a floppy cat.",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "desktopName": "floppy-cat.desktop",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"tsc -p electron/tsconfig.json --watch\" \"wait-on tcp:5173 && electron --no-sandbox .\"",
+    "start": "npm run build && npm run launch",
+    "launch": "electron --no-sandbox --ozone-platform=x11 .",
+    "build": "npm run typecheck && vite build && npm run build:electron",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "install-autostart": "node scripts/install-autostart.mjs",
+    "uninstall-autostart": "node scripts/uninstall-autostart.mjs",
+    "install-launcher": "node scripts/install-launcher.mjs",
+    "uninstall-launcher": "node scripts/uninstall-launcher.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "lucide-react": "^0.539.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "concurrently": "^9.2.0",
+    "electron": "^43.4.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.4",
+    "wait-on": "^8.0.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
