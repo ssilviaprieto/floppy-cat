@@ -17,6 +17,7 @@ declare global {
         width: number;
         height: number;
       }) => Promise<void>;
+      notifyFocusComplete: (minutes: number) => Promise<void>;
       showTimerModeMenu: (anchor: {
         x: number;
         y: number;

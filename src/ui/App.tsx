@@ -150,6 +150,10 @@ export function App() {
     const kind = previousTimer.mode === 'break' ? 'rest' : 'focus';
     const nextHistory = saveDailyHistory(addDailyHistoryBlock(getDailyHistory(), kind, previousTimer.totalSeconds));
     setDailyHistory(nextHistory);
+
+    if (previousTimer.mode === 'focus') {
+      void window.floppyCat?.notifyFocusComplete(previousTimer.totalSeconds / 60);
+    }
   }, [timer]);
 
   useEffect(() => {

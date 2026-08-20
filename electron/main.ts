@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, Notification, ipcMain, screen } from 'electron';
 import { lstatSync, readlinkSync, rmSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -161,6 +161,19 @@ function closeTimerModeMenu() {
   if (!windowToClose.isDestroyed()) {
     windowToClose.close();
   }
+}
+
+function showFocusCompleteNotification(minutes: number) {
+  if (!Notification.isSupported()) {
+    return;
+  }
+
+  new Notification({
+    title: 'Floppy Cat',
+    body: `Hey! ${minutes} minutes have passed, wanna focus a lil more? :)`,
+    icon: ICON_PATH,
+    silent: true
+  }).show();
 }
 
 function timerModeMenuHtml(selected: TimerMode) {
@@ -376,6 +389,10 @@ if (gotSingleInstanceLock) {
     ipcMain.handle('window:close', () => mainWindow?.close());
     ipcMain.handle('window:get-state', () => (mainWindow ? captureWindowState(mainWindow) : DEFAULT_WINDOW_STATE));
     ipcMain.handle('window:save-state', (_event, state: SavedWindowState) => saveWindowState(state));
+    ipcMain.handle('notification:focus-complete', (_event, minutes: number) => {
+      const roundedMinutes = Number.isFinite(minutes) ? Math.max(1, Math.round(minutes)) : 40;
+      showFocusCompleteNotification(roundedMinutes);
+    });
     ipcMain.handle('timer-mode:show', (_event, anchor: TimerModeMenuAnchor) => showTimerModeMenu(anchor));
     ipcMain.handle('timer-mode:hide', closeTimerModeMenu);
     ipcMain.on('timer-mode:selected', (_event, mode: TimerMode) => {

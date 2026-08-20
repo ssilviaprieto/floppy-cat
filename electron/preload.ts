@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('floppyCat', {
   close: () => ipcRenderer.invoke('window:close'),
   getWindowState: () => ipcRenderer.invoke('window:get-state') as Promise<FloppyCatWindowState>,
   saveWindowState: (state: FloppyCatWindowState) => ipcRenderer.invoke('window:save-state', state),
+  notifyFocusComplete: (minutes: number) => ipcRenderer.invoke('notification:focus-complete', minutes),
   showTimerModeMenu: (anchor: TimerModeMenuAnchor) => ipcRenderer.invoke('timer-mode:show', anchor),
   hideTimerModeMenu: () => ipcRenderer.invoke('timer-mode:hide'),
   onTimerModeSelected: (callback: (mode: 'focus' | 'break') => void) => {
