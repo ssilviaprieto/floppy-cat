@@ -1,4 +1,5 @@
 import { DEFAULT_TIMER_CONFIG, type TimerConfig } from '../focus/focusTimer';
+import { createDailyHistory, getLocalDateKey, type DailyHistory } from '../focus/dailyHistory';
 
 export type KeyValueStore = {
   getItem: (key: string) => string | null;
@@ -8,6 +9,7 @@ export type KeyValueStore = {
 
 const BEST_SCORE_KEY = 'floppy-cat:best-score';
 const TIMER_CONFIG_KEY = 'floppy-cat:timer-config';
+const DAILY_HISTORY_KEY = 'floppy-cat:daily-history';
 const MIN_TIMER_MINUTES = 1;
 const MAX_TIMER_MINUTES = 180;
 
@@ -62,4 +64,42 @@ export function saveTimerConfig(config: Partial<TimerConfig>, store: KeyValueSto
   const normalizedConfig = normalizeTimerConfig(config);
   store.setItem(TIMER_CONFIG_KEY, JSON.stringify(normalizedConfig));
   return normalizedConfig;
+}
+
+function normalizeDailyHistory(history: Partial<DailyHistory>, today = getLocalDateKey()): DailyHistory {
+  if (history.date !== today) {
+    return createDailyHistory(today);
+  }
+
+  return {
+    date: today,
+    focusCycles: normalizeHistoryCount(history.focusCycles),
+    focusSeconds: normalizeHistoryCount(history.focusSeconds),
+    restCycles: normalizeHistoryCount(history.restCycles),
+    restSeconds: normalizeHistoryCount(history.restSeconds)
+  };
+}
+
+function normalizeHistoryCount(value: unknown) {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+export function getDailyHistory(store: KeyValueStore = window.localStorage, today = getLocalDateKey()) {
+  const raw = store.getItem(DAILY_HISTORY_KEY);
+  if (raw === null) {
+    return createDailyHistory(today);
+  }
+
+  try {
+    return normalizeDailyHistory(JSON.parse(raw) as Partial<DailyHistory>, today);
+  } catch {
+    return createDailyHistory(today);
+  }
+}
+
+export function saveDailyHistory(history: DailyHistory, store: KeyValueStore = window.localStorage) {
+  const normalizedHistory = normalizeDailyHistory(history, history.date);
+  store.setItem(DAILY_HISTORY_KEY, JSON.stringify(normalizedHistory));
+  return normalizedHistory;
 }

@@ -13,6 +13,7 @@ The app icon is a transparent kitty-only PNG at [`assets/floppy-cat.png`](assets
 - Canvas runner game with a cute cat, soft pink background, mountains, birds, jumping, ducking, score, and best score.
 - Pomodoro timer with Focus, Rest, and Bonus modes.
 - Configurable timer lengths from the titlebar settings button.
+- Daily-only focus/rest history with cycles, total time, and encouraging milestones.
 - Gentle rotating encouragement and task-prioritizing nudges.
 - Optional KDE launcher and login autostart entries.
 
@@ -23,6 +24,7 @@ The app icon is a transparent kitty-only PNG at [`assets/floppy-cat.png`](assets
 - Click the `Focus 40:00` timer pill to start or pause focus time.
 - Use the mode inside the timer pill to switch between `Focus` and `Rest`.
 - Use the tiny settings button in the titlebar to configure Focus, Rest, and Bonus minutes.
+- Use the tiny chart button in the titlebar to see today's completed Focus, +10, and Rest cycles.
 - The bottom timer shows focus/rest time, short encouragement, and tiny task-prioritizing nudges.
 - Use the tiny timer-reset button to reset back to a 40 minute focus block.
 

@@ -75,6 +75,37 @@ button {
   box-shadow: 7px -4px 0 -4px #3b2442;
 }
 
+.history-button {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  flex: 0 0 18px;
+  padding: 0;
+  color: #4f2033;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(124, 62, 160, 0.24);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.history-button:hover {
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.history-button-active,
+.history-button-active:hover {
+  color: #fff;
+  background: #9f315f;
+  border-color: #7f254b;
+}
+
+.history-button:focus-visible {
+  outline: 2px solid #7c3ea0;
+  outline-offset: 1px;
+}
+
 .app-title {
   overflow: hidden;
   color: #3b2442;
@@ -292,6 +323,81 @@ button {
   color: #fff;
   background: #9f315f;
   border-color: #7f254b;
+}
+
+.history-panel {
+  position: absolute;
+  top: 27px;
+  left: 6px;
+  z-index: 5;
+  display: grid;
+  width: 232px;
+  gap: 5px;
+  padding: 7px;
+  color: #4f2033;
+  background: #fff0f6;
+  border: 1px solid rgba(127, 37, 75, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 9px 20px rgba(88, 29, 78, 0.2);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1;
+}
+
+.history-head strong {
+  color: #7f254b;
+  font-size: 13px;
+}
+
+.history-meter {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(127, 37, 75, 0.14);
+  border-radius: 999px;
+}
+
+.history-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #f4a1ca 0%, #9f315f 100%);
+  border-radius: inherit;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: 1fr 24px 62px;
+  align-items: center;
+  gap: 3px 7px;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+.history-grid strong,
+.history-grid span:nth-child(3n) {
+  color: #7f254b;
+  text-align: right;
+  font-weight: 840;
+}
+
+.history-panel p {
+  margin: 0;
+  overflow: hidden;
+  color: #4d225a;
+  font-size: 11px;
+  font-weight: 780;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .game-canvas {

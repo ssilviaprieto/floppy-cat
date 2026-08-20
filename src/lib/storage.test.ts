@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { createDailyHistory } from '../focus/dailyHistory';
 import { DEFAULT_TIMER_CONFIG } from '../focus/focusTimer';
-import { clearBestScore, getBestScore, getTimerConfig, saveBestScore, saveTimerConfig, type KeyValueStore } from './storage';
+import {
+  clearBestScore,
+  getBestScore,
+  getDailyHistory,
+  getTimerConfig,
+  saveBestScore,
+  saveDailyHistory,
+  saveTimerConfig,
+  type KeyValueStore
+} from './storage';
 
 function createStore(): KeyValueStore {
   const data = new Map<string, string>();
@@ -80,5 +90,43 @@ describe('timer config storage', () => {
 
     store.setItem('floppy-cat:timer-config', '{');
     expect(getTimerConfig(store)).toEqual(DEFAULT_TIMER_CONFIG);
+  });
+});
+
+describe('daily history storage', () => {
+  it('defaults to an empty history for today', () => {
+    const store = createStore();
+
+    expect(getDailyHistory(store, '2026-08-20')).toEqual(createDailyHistory('2026-08-20'));
+  });
+
+  it('saves and reads today history', () => {
+    const store = createStore();
+    const history = {
+      date: '2026-08-20',
+      focusCycles: 2,
+      focusSeconds: 3000,
+      restCycles: 1,
+      restSeconds: 900
+    };
+
+    expect(saveDailyHistory(history, store)).toEqual(history);
+    expect(getDailyHistory(store, '2026-08-20')).toEqual(history);
+  });
+
+  it('does not carry yesterday into today', () => {
+    const store = createStore();
+    saveDailyHistory(
+      {
+        date: '2026-08-19',
+        focusCycles: 8,
+        focusSeconds: 20_000,
+        restCycles: 4,
+        restSeconds: 3600
+      },
+      store
+    );
+
+    expect(getDailyHistory(store, '2026-08-20')).toEqual(createDailyHistory('2026-08-20'));
   });
 });

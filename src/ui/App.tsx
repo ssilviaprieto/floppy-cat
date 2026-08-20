@@ -1,10 +1,16 @@
-import { Check, Clock3, Minus, Minimize2, Pause, Play, RotateCcw, Settings2, TimerReset, X } from 'lucide-react';
+import { BarChart3, Check, Clock3, Minus, Minimize2, Pause, Play, RotateCcw, Settings2, TimerReset, X } from 'lucide-react';
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import {
+  addDailyHistoryBlock,
+  DAILY_FOCUS_GOAL_SECONDS,
+  formatDailyDuration,
+  getDailyHistoryMessage
+} from '../focus/dailyHistory';
 import { getFocusPanelMessage } from '../focus/focusMessages';
 import { createFocusTimer, DEFAULT_TIMER_CONFIG, focusTimerReducer, formatTimerSeconds, getTimerTotalSeconds, type TimerConfig } from '../focus/focusTimer';
 import { GameEngine, type GameSnapshot } from '../game/GameEngine';
 import { renderGame } from '../game/renderGame';
-import { getBestScore, getTimerConfig, normalizeTimerConfig, saveBestScore, saveTimerConfig } from '../lib/storage';
+import { getBestScore, getDailyHistory, getTimerConfig, normalizeTimerConfig, saveBestScore, saveDailyHistory, saveTimerConfig } from '../lib/storage';
 
 const CANVAS_WIDTH = 404;
 const CANVAS_HEIGHT = 60;
@@ -14,19 +20,24 @@ export function App() {
   const timerModeRef = useRef<HTMLDivElement | null>(null);
   const configPanelRef = useRef<HTMLDivElement | null>(null);
   const configButtonRef = useRef<HTMLButtonElement | null>(null);
+  const historyPanelRef = useRef<HTMLDivElement | null>(null);
+  const historyButtonRef = useRef<HTMLButtonElement | null>(null);
   const engineRef = useRef(new GameEngine({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }));
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot>(() => engineRef.current.getSnapshot());
   const [bestScore, setBestScore] = useState(() => getBestScore());
   const [timer, dispatchTimer] = useReducer(focusTimerReducer, undefined, () => createFocusTimer(getTimerConfig()));
+  const [dailyHistory, setDailyHistory] = useState(() => getDailyHistory());
   const [configOpen, setConfigOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [configDraft, setConfigDraft] = useState<TimerConfig>(() => getTimerConfig());
   const [messageSeconds, setMessageSeconds] = useState(0);
   const [playSeconds, setPlaySeconds] = useState(0);
   const [timerModeMenuOpen, setTimerModeMenuOpen] = useState(false);
   const bestScoreRef = useRef(bestScore);
   const snapshotRef = useRef(snapshot);
+  const previousTimerRef = useRef(timer);
 
   useEffect(() => {
     snapshotRef.current = snapshot;
@@ -129,10 +140,24 @@ export function App() {
   }, [refreshSnapshot, timer.mode, timer.status]);
 
   useEffect(() => {
+    const previousTimer = previousTimerRef.current;
+    previousTimerRef.current = timer;
+
+    if (previousTimer.status !== 'running' || timer.status !== 'prompt') {
+      return;
+    }
+
+    const kind = previousTimer.mode === 'break' ? 'rest' : 'focus';
+    const nextHistory = saveDailyHistory(addDailyHistoryBlock(getDailyHistory(), kind, previousTimer.totalSeconds));
+    setDailyHistory(nextHistory);
+  }, [timer]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'Escape') {
         setTimerModeMenuOpen(false);
         setConfigOpen(false);
+        setHistoryOpen(false);
         void window.floppyCat?.hideTimerModeMenu();
         return;
       }
@@ -210,6 +235,27 @@ export function App() {
     return () => window.removeEventListener('pointerdown', closeOnOutsidePointer);
   }, [configOpen]);
 
+  useEffect(() => {
+    if (!historyOpen) {
+      return;
+    }
+
+    const closeOnOutsidePointer = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        (historyPanelRef.current?.contains(target) || historyButtonRef.current?.contains(target))
+      ) {
+        return;
+      }
+
+      setHistoryOpen(false);
+    };
+
+    window.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => window.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [historyOpen]);
+
   const timerProgress = timer.remainingSeconds / getTimerTotalSeconds(timer);
   const focusMessage = getFocusPanelMessage(timer, messageSeconds, playSeconds);
   const timerSelectorValue = timer.mode === 'break' ? 'break' : 'focus';
@@ -219,6 +265,8 @@ export function App() {
       : timer.mode === 'break'
         ? 'Break timer'
         : 'Bonus focus timer';
+  const focusGoalProgress = Math.min(1, dailyHistory.focusSeconds / DAILY_FOCUS_GOAL_SECONDS);
+  const historySummary = `${dailyHistory.focusCycles} focus, ${dailyHistory.restCycles} rest`;
 
   const toggleTimerModeMenu = useCallback(() => {
     setConfigOpen(false);
@@ -247,9 +295,18 @@ export function App() {
   const toggleConfigPanel = useCallback(() => {
     void window.floppyCat?.hideTimerModeMenu();
     setTimerModeMenuOpen(false);
+    setHistoryOpen(false);
     setConfigDraft(timer.config);
     setConfigOpen((isOpen) => !isOpen);
   }, [timer.config]);
+
+  const toggleHistoryPanel = useCallback(() => {
+    void window.floppyCat?.hideTimerModeMenu();
+    setTimerModeMenuOpen(false);
+    setConfigOpen(false);
+    setDailyHistory(getDailyHistory());
+    setHistoryOpen((isOpen) => !isOpen);
+  }, []);
 
   const setDraftMinutes = useCallback((key: keyof TimerConfig, value: number) => {
     setConfigDraft((currentConfig) => normalizeTimerConfig({ ...currentConfig, [key]: value }));
@@ -294,6 +351,17 @@ export function App() {
     <main className="app-shell" aria-label="Floppy Cat focus game">
       <header className="titlebar">
         <div className="drag-region">
+          <button
+            ref={historyButtonRef}
+            className={`history-button ${historyOpen ? 'history-button-active' : ''}`}
+            type="button"
+            title="Today history"
+            aria-label={`Today history: ${historySummary}`}
+            aria-expanded={historyOpen}
+            onClick={toggleHistoryPanel}
+          >
+            <BarChart3 size={12} aria-hidden="true" />
+          </button>
           <span className="cat-dot" aria-hidden="true" />
           <span className="app-title">Floppy Cat</span>
           <span className="score-pill" aria-live="polite">
@@ -344,6 +412,27 @@ export function App() {
           </button>
         </div>
       </header>
+
+      {historyOpen ? (
+        <div ref={historyPanelRef} className="history-panel" aria-label="Today focus history">
+          <div className="history-head">
+            <span>Today</span>
+            <strong>{formatDailyDuration(dailyHistory.focusSeconds)}</strong>
+          </div>
+          <div className="history-meter" aria-hidden="true">
+            <span style={{ width: `${focusGoalProgress * 100}%` }} />
+          </div>
+          <div className="history-grid">
+            <span>Focus</span>
+            <strong>{dailyHistory.focusCycles}</strong>
+            <span>{formatDailyDuration(dailyHistory.focusSeconds)}</span>
+            <span>Rest</span>
+            <strong>{dailyHistory.restCycles}</strong>
+            <span>{formatDailyDuration(dailyHistory.restSeconds)}</span>
+          </div>
+          <p>{getDailyHistoryMessage(dailyHistory.focusSeconds)}</p>
+        </div>
+      ) : null}
 
       {configOpen ? (
         <div ref={configPanelRef} className="config-panel" aria-label="Timer settings">
