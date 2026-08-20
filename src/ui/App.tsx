@@ -8,6 +8,7 @@ import {
 } from '../focus/dailyHistory';
 import { getFocusPanelMessage } from '../focus/focusMessages';
 import { createFocusTimer, DEFAULT_TIMER_CONFIG, focusTimerReducer, formatTimerSeconds, getTimerTotalSeconds, type TimerConfig } from '../focus/focusTimer';
+import { getTimerCompletionNotification } from '../focus/timerNotifications';
 import { GameEngine, type GameSnapshot } from '../game/GameEngine';
 import { renderGame } from '../game/renderGame';
 import { getBestScore, getDailyHistory, getTimerConfig, normalizeTimerConfig, saveBestScore, saveDailyHistory, saveTimerConfig } from '../lib/storage';
@@ -151,9 +152,9 @@ export function App() {
     const nextHistory = saveDailyHistory(addDailyHistoryBlock(getDailyHistory(), kind, previousTimer.totalSeconds));
     setDailyHistory(nextHistory);
 
-    if (previousTimer.mode === 'focus') {
-      void window.floppyCat?.notifyFocusComplete(previousTimer.totalSeconds / 60);
-    }
+    void window.floppyCat?.notifyTimerComplete(
+      getTimerCompletionNotification(previousTimer.mode, previousTimer.totalSeconds / 60)
+    );
   }, [timer]);
 
   useEffect(() => {

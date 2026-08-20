@@ -17,7 +17,10 @@ declare global {
         width: number;
         height: number;
       }) => Promise<void>;
-      notifyFocusComplete: (minutes: number) => Promise<void>;
+      notifyTimerComplete: (payload: {
+        title: string;
+        body: string;
+      }) => Promise<void>;
       showTimerModeMenu: (anchor: {
         x: number;
         y: number;

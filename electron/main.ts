@@ -12,6 +12,10 @@ type SavedWindowState = {
 };
 
 type TimerMode = 'focus' | 'break';
+type TimerNotificationPayload = {
+  title: string;
+  body: string;
+};
 
 type TimerModeMenuAnchor = {
   x: number;
@@ -163,14 +167,14 @@ function closeTimerModeMenu() {
   }
 }
 
-function showFocusCompleteNotification(minutes: number) {
+function showTimerCompleteNotification(payload: TimerNotificationPayload) {
   if (!Notification.isSupported()) {
     return;
   }
 
   new Notification({
-    title: 'Floppy Cat',
-    body: `Hey! ${minutes} minutes have passed, wanna focus a lil more? :)`,
+    title: payload.title,
+    body: payload.body,
     icon: ICON_PATH,
     silent: true
   }).show();
@@ -389,9 +393,12 @@ if (gotSingleInstanceLock) {
     ipcMain.handle('window:close', () => mainWindow?.close());
     ipcMain.handle('window:get-state', () => (mainWindow ? captureWindowState(mainWindow) : DEFAULT_WINDOW_STATE));
     ipcMain.handle('window:save-state', (_event, state: SavedWindowState) => saveWindowState(state));
-    ipcMain.handle('notification:focus-complete', (_event, minutes: number) => {
-      const roundedMinutes = Number.isFinite(minutes) ? Math.max(1, Math.round(minutes)) : 40;
-      showFocusCompleteNotification(roundedMinutes);
+    ipcMain.handle('notification:timer-complete', (_event, payload: TimerNotificationPayload) => {
+      if (!payload.title || !payload.body) {
+        return;
+      }
+
+      showTimerCompleteNotification(payload);
     });
     ipcMain.handle('timer-mode:show', (_event, anchor: TimerModeMenuAnchor) => showTimerModeMenu(anchor));
     ipcMain.handle('timer-mode:hide', closeTimerModeMenu);

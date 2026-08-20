@@ -15,12 +15,17 @@ export type TimerModeMenuAnchor = {
   selected: 'focus' | 'break';
 };
 
+export type TimerNotificationPayload = {
+  title: string;
+  body: string;
+};
+
 contextBridge.exposeInMainWorld('floppyCat', {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   close: () => ipcRenderer.invoke('window:close'),
   getWindowState: () => ipcRenderer.invoke('window:get-state') as Promise<FloppyCatWindowState>,
   saveWindowState: (state: FloppyCatWindowState) => ipcRenderer.invoke('window:save-state', state),
-  notifyFocusComplete: (minutes: number) => ipcRenderer.invoke('notification:focus-complete', minutes),
+  notifyTimerComplete: (payload: TimerNotificationPayload) => ipcRenderer.invoke('notification:timer-complete', payload),
   showTimerModeMenu: (anchor: TimerModeMenuAnchor) => ipcRenderer.invoke('timer-mode:show', anchor),
   hideTimerModeMenu: () => ipcRenderer.invoke('timer-mode:hide'),
   onTimerModeSelected: (callback: (mode: 'focus' | 'break') => void) => {
