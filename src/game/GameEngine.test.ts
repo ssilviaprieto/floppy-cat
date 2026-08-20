@@ -151,11 +151,11 @@ describe('GameEngine', () => {
 
     const lateSpeed = engine.getSnapshot().speed;
     expect(lateSpeed).toBeGreaterThan(earlySpeed);
-    expect(lateSpeed).toBeLessThanOrEqual(245);
-    expect(lateSpeed).toBeCloseTo(245);
+    expect(lateSpeed).toBeLessThanOrEqual(305);
+    expect(lateSpeed).toBeCloseTo(305);
   });
 
-  it('starts with only simple mountains and a long first pixel gap', () => {
+  it('starts with only simple mountains and a shorter first pixel gap', () => {
     const engine = new GameEngine({ random: sequenceRandom([0, 0.5, 0.5, 0]) });
     engine.setNextSpawnDistanceForTest(0);
     engine.jump();
@@ -166,7 +166,23 @@ describe('GameEngine', () => {
     expect(snapshot.obstacles).toHaveLength(1);
     expect(snapshot.obstacles[0].kind).toBe('mountain');
     expect(snapshot.obstacles[0].variant).toBe('smallMountain');
-    expect(snapshot.nextSpawnDistancePx).toBeGreaterThanOrEqual(145);
+    expect(snapshot.nextSpawnDistancePx).toBeGreaterThanOrEqual(78);
+    expect(snapshot.nextSpawnDistancePx).toBeLessThan(145);
+  });
+
+  it('varies the spawn lead so mountains do not always enter at the same spot', () => {
+    const near = new GameEngine({ random: sequenceRandom([0, 0, 0.5, 0.5, 0.5]) });
+    near.setNextSpawnDistanceForTest(0);
+    near.jump();
+    near.update(1 / 60);
+
+    const far = new GameEngine({ random: sequenceRandom([0, 1, 0.5, 0.5, 0.5]) });
+    far.setNextSpawnDistanceForTest(0);
+    far.jump();
+    far.update(1 / 60);
+
+    expect(near.getSnapshot().obstacles[0].x).toBeLessThan(far.getSnapshot().obstacles[0].x);
+    expect(far.getSnapshot().obstacles[0].x - near.getSnapshot().obstacles[0].x).toBeGreaterThanOrEqual(30);
   });
 
   it('uses smaller effective gaps as the run reaches late phase', () => {
@@ -186,9 +202,23 @@ describe('GameEngine', () => {
     expect(late.getSnapshot().nextSpawnDistancePx).toBeLessThan(early.getSnapshot().nextSpawnDistancePx);
   });
 
+  it('unlocks each difficulty phase much earlier than the old slow pacing', () => {
+    const engine = new GameEngine({ random: () => 0.5 });
+    expect(engine.getSnapshot().phase).toBe('early');
+
+    engine.setScoreForTest(3);
+    expect(engine.getSnapshot().phase).toBe('middle');
+
+    engine.setScoreForTest(7);
+    expect(engine.getSnapshot().phase).toBe('bird');
+
+    engine.setScoreForTest(13);
+    expect(engine.getSnapshot().phase).toBe('late');
+  });
+
   it('unlocks Dino-style late variety across mountain groups and bird lanes', () => {
     const variants = new Set<ObstacleVariant>();
-    for (const pick of [0, 0.3, 0.55, 0.7, 0.82]) {
+    for (const pick of [0, 0.1, 0.25, 0.45, 0.65, 0.85]) {
       for (const obstacle of spawnOneLateChallenge(pick)) {
         if (obstacle.variant) {
           variants.add(obstacle.variant);
@@ -196,7 +226,9 @@ describe('GameEngine', () => {
       }
     }
 
-    expect(variants).toEqual(new Set(['smallMountain', 'mountainPair', 'mountainTriple', 'highBird', 'lowBird']));
+    expect(variants).toEqual(
+      new Set(['smallMountain', 'mediumMountain', 'mountainPair', 'mountainTriple', 'highBird', 'lowBird'])
+    );
   });
 
   it('prevents more than two identical challenge segments in a row', () => {

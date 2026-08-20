@@ -74,12 +74,13 @@ const CAT_HEIGHT = 20;
 const CAT_X = 46;
 const GRAVITY = 920;
 const JUMP_IMPULSE = -238;
-const BASE_SPEED = 96;
-const MAX_SPEED = 245;
-const SPEED_ACCELERATION = 0.4;
-const INITIAL_SPAWN_DISTANCE = 148;
-const SPAWN_X_OFFSET = 24;
-const MAX_GAP_COEFFICIENT = 1.5;
+const BASE_SPEED = 118;
+const MAX_SPEED = 305;
+const SPEED_ACCELERATION = 1.85;
+const INITIAL_SPAWN_DISTANCE = 104;
+const MIN_SPAWN_X_OFFSET = 10;
+const MAX_SPAWN_X_OFFSET = 44;
+const MAX_GAP_COEFFICIENT = 1.42;
 const MAX_DUPLICATE_CHALLENGES = 2;
 const COYOTE_SECONDS = 0.1;
 const JUMP_BUFFER_SECONDS = 0.09;
@@ -90,84 +91,84 @@ const CHALLENGES: ChallengeDefinition[] = [
     kind: 'mountain',
     minScore: 0,
     minSpeed: 0,
-    baseGap: 132,
+    baseGap: 106,
     minWidth: 13,
     maxWidth: 20,
     minHeight: 8,
     maxHeight: 13,
     groupSize: 1,
-    weights: { early: 10, middle: 5, bird: 3, late: 2 }
+    weights: { early: 9, middle: 4, bird: 2, late: 1 }
   },
   {
     variant: 'mediumMountain',
     kind: 'mountain',
-    minScore: 5,
-    minSpeed: 108,
-    baseGap: 124,
+    minScore: 3,
+    minSpeed: 126,
+    baseGap: 102,
     minWidth: 18,
     maxWidth: 28,
     minHeight: 12,
     maxHeight: 18,
     groupSize: 1,
-    weights: { early: 0, middle: 7, bird: 4, late: 3 }
+    weights: { early: 0, middle: 7, bird: 4, late: 2 }
   },
   {
     variant: 'mountainPair',
     kind: 'mountain',
-    minScore: 5,
-    minSpeed: 112,
-    baseGap: 128,
+    minScore: 4,
+    minSpeed: 132,
+    baseGap: 104,
     minWidth: 13,
     maxWidth: 19,
     minHeight: 9,
     maxHeight: 15,
     groupSize: 2,
     innerGap: 6,
-    weights: { early: 0, middle: 4, bird: 4, late: 4 }
+    weights: { early: 0, middle: 5, bird: 5, late: 4 }
   },
   {
     variant: 'mountainTriple',
     kind: 'mountain',
-    minScore: 18,
-    minSpeed: 150,
-    baseGap: 120,
+    minScore: 13,
+    minSpeed: 166,
+    baseGap: 100,
     minWidth: 12,
     maxWidth: 18,
     minHeight: 8,
     maxHeight: 15,
     groupSize: 3,
     innerGap: 5,
-    weights: { early: 0, middle: 0, bird: 0, late: 4 }
+    weights: { early: 0, middle: 0, bird: 0, late: 5 }
   },
   {
     variant: 'highBird',
     kind: 'bird',
-    minScore: 10,
-    minSpeed: 134,
-    baseGap: 150,
+    minScore: 7,
+    minSpeed: 146,
+    baseGap: 112,
     minWidth: 22,
     maxWidth: 27,
     minHeight: 12,
     maxHeight: 12,
     groupSize: 1,
     y: 8,
-    birdSpeedOffset: 10,
+    birdSpeedOffset: 16,
     weights: { early: 0, middle: 0, bird: 3, late: 4 }
   },
   {
     variant: 'lowBird',
     kind: 'bird',
-    minScore: 10,
-    minSpeed: 140,
-    baseGap: 154,
+    minScore: 8,
+    minSpeed: 152,
+    baseGap: 116,
     minWidth: 22,
     maxWidth: 27,
     minHeight: 12,
     maxHeight: 12,
     groupSize: 1,
     y: 23,
-    birdSpeedOffset: 12,
-    weights: { early: 0, middle: 0, bird: 2, late: 5 }
+    birdSpeedOffset: 18,
+    weights: { early: 0, middle: 0, bird: 3, late: 6 }
   }
 ];
 
@@ -438,11 +439,12 @@ export class GameEngine {
 
     let xOffset = 0;
     let totalWidth = 0;
+    const spawnLead = this.randomInteger(MIN_SPAWN_X_OFFSET, MAX_SPAWN_X_OFFSET);
 
     for (let index = 0; index < challenge.groupSize; index += 1) {
       const width = this.randomInteger(challenge.minWidth, challenge.maxWidth);
       const height = this.randomInteger(challenge.minHeight, challenge.maxHeight);
-      const x = this.width + SPAWN_X_OFFSET + xOffset;
+      const x = this.width + spawnLead + xOffset;
 
       this.obstacles.push({
         id: this.nextObstacleId++,
@@ -463,13 +465,14 @@ export class GameEngine {
 
   private spawnBird(challenge: ChallengeDefinition) {
     const speedDirection = this.random() > 0.5 ? 1 : -1;
+    const spawnLead = this.randomInteger(MIN_SPAWN_X_OFFSET, MAX_SPAWN_X_OFFSET);
     const width = this.randomInteger(challenge.minWidth, challenge.maxWidth);
 
     this.obstacles.push({
       id: this.nextObstacleId++,
       kind: 'bird',
       variant: challenge.variant,
-      x: this.width + SPAWN_X_OFFSET,
+      x: this.width + spawnLead,
       y: challenge.y,
       width,
       height: challenge.minHeight,
@@ -484,26 +487,27 @@ export class GameEngine {
     const phase = this.getPhase();
     const speedScale = this.speed / BASE_SPEED;
     const phaseGapReduction: Record<DifficultyPhase, number> = {
-      early: 1,
-      middle: 0.95,
-      bird: 0.9,
-      late: 0.84
+      early: 0.92,
+      middle: 0.84,
+      bird: 0.76,
+      late: 0.66
     };
-    const minGap = Math.round((spawnedWidth * speedScale + challenge.baseGap) * phaseGapReduction[phase]);
+    const jitter = this.randomInteger(-18, 18);
+    const minGap = Math.max(78, Math.round((spawnedWidth * speedScale + challenge.baseGap + jitter) * phaseGapReduction[phase]));
     const maxGap = Math.round(minGap * MAX_GAP_COEFFICIENT);
     return this.randomInteger(minGap, maxGap);
   }
 
   private getPhase(): DifficultyPhase {
-    if (this.score >= 18) {
+    if (this.score >= 13) {
       return 'late';
     }
 
-    if (this.score >= 10) {
+    if (this.score >= 7) {
       return 'bird';
     }
 
-    if (this.score >= 5) {
+    if (this.score >= 3) {
       return 'middle';
     }
 
