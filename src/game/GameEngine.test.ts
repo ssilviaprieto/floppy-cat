@@ -165,6 +165,39 @@ describe('GameEngine', () => {
     expect(engine.getSnapshot().speed).toBeGreaterThanOrEqual(202);
   });
 
+  it('makes jump impulse stronger at higher speed so the arc stays playable', () => {
+    const slow = new GameEngine({ random: () => 0.5 });
+    slow.jump();
+
+    const fast = new GameEngine({ random: () => 0.5 });
+    fast.setSpeedForTest(325);
+    fast.jump();
+
+    expect(fast.getSnapshot().cat.vy).toBeLessThan(slow.getSnapshot().cat.vy);
+  });
+
+  it('cycles the background mood smoothly with distance', () => {
+    const engine = new GameEngine({ random: () => 0.5 });
+    engine.setNextSpawnDistanceForTest(999_999);
+    engine.jump();
+    const dayMood = engine.getSnapshot().mood;
+
+    while (engine.getSnapshot().distanceRan < 1400) {
+      engine.update(1 / 60);
+    }
+
+    const nightMood = engine.getSnapshot().mood;
+
+    while (engine.getSnapshot().distanceRan < 2800) {
+      engine.update(1 / 60);
+    }
+
+    const returnedMood = engine.getSnapshot().mood;
+    expect(dayMood).toBeCloseTo(0);
+    expect(nightMood).toBeGreaterThan(0.75);
+    expect(returnedMood).toBeLessThan(0.2);
+  });
+
   it('starts with only simple mountains and a shorter first pixel gap', () => {
     const engine = new GameEngine({ random: sequenceRandom([0, 0.5, 0.5, 0]) });
     engine.setNextSpawnDistanceForTest(0);

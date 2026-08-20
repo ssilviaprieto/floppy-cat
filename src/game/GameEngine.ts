@@ -36,6 +36,7 @@ export type GameSnapshot = {
   speed: number;
   difficulty: number;
   phase: DifficultyPhase;
+  mood: number;
   distanceRan: number;
   nextSpawnDistancePx: number;
   companionMode: boolean;
@@ -87,6 +88,7 @@ const MAX_GAP_COEFFICIENT = 1.42;
 const MAX_DUPLICATE_CHALLENGES = 2;
 const COYOTE_SECONDS = 0.1;
 const JUMP_BUFFER_SECONDS = 0.09;
+const MOOD_CYCLE_DISTANCE = 2800;
 
 const CHALLENGES: ChallengeDefinition[] = [
   {
@@ -305,6 +307,7 @@ export class GameEngine {
       speed: this.speed,
       difficulty: this.calculateDifficulty(),
       phase: this.getPhase(),
+      mood: this.calculateMood(),
       distanceRan: this.distanceRan,
       nextSpawnDistancePx: Math.max(0, this.distanceUntilNextObstacle),
       companionMode: this.companionMode,
@@ -393,7 +396,7 @@ export class GameEngine {
 
   private performJump() {
     this.cat.ducking = false;
-    this.cat.vy = JUMP_IMPULSE;
+    this.cat.vy = this.calculateJumpImpulse();
     this.cat.onGround = false;
     this.coyoteTimer = 0;
     this.jumpBufferTimer = 0;
@@ -533,6 +536,11 @@ export class GameEngine {
     return Math.min(MAX_SPEED, Math.max(speedFromTime, speedFromScore));
   }
 
+  private calculateJumpImpulse() {
+    const speedProgress = (this.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
+    return JUMP_IMPULSE - Math.max(0, speedProgress) * 28;
+  }
+
   private calculateDistanceUntilNextLogicalSpawn() {
     const rightmostEdge = this.obstacles.reduce((rightEdge, obstacle) => {
       return Math.max(rightEdge, obstacle.x + obstacle.width);
@@ -560,6 +568,11 @@ export class GameEngine {
     const speedProgress = (this.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
     const scoreProgress = this.score / 28;
     return Math.min(1, speedProgress * 0.58 + scoreProgress * 0.42);
+  }
+
+  private calculateMood() {
+    const cycleProgress = (this.distanceRan % MOOD_CYCLE_DISTANCE) / MOOD_CYCLE_DISTANCE;
+    return (1 - Math.cos(cycleProgress * Math.PI * 2)) / 2;
   }
 
   private weightedChoice(challenges: ChallengeDefinition[], phase: DifficultyPhase) {

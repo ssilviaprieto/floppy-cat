@@ -16,21 +16,26 @@ const PALETTE = {
 
 export function renderGame(ctx: CanvasRenderingContext2D, snapshot: GameSnapshot, width: number, height: number) {
   ctx.clearRect(0, 0, width, height);
-  drawBackground(ctx, width, height, snapshot.elapsed);
+  drawBackground(ctx, width, height, snapshot.elapsed, snapshot.mood);
   drawObstacles(ctx, snapshot.obstacles, snapshot.elapsed, snapshot.status, snapshot.cat.height, snapshot.groundY, width);
   drawCat(ctx, snapshot);
-  drawForeground(ctx, width, height, snapshot.elapsed, snapshot.groundY);
+  drawForeground(ctx, width, height, snapshot.elapsed, snapshot.groundY, snapshot.mood);
   drawStatusHint(ctx, snapshot, width, height);
 }
 
-function drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number) {
+function drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number, mood: number) {
+  const skyTop = mixColor(PALETTE.skyTop, '#d8c6ff', mood);
+  const skyMiddle = mixColor(PALETTE.skyBottom, '#f2ddff', mood);
+  const skyBottom = mixColor('#ffe6f1', '#ffe3f6', mood);
+
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, PALETTE.skyTop);
-  gradient.addColorStop(0.56, PALETTE.skyBottom);
-  gradient.addColorStop(1, '#ffe6f1');
+  gradient.addColorStop(0, skyTop);
+  gradient.addColorStop(0.56, skyMiddle);
+  gradient.addColorStop(1, skyBottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
+  drawDreamLights(ctx, width, height, elapsed, mood);
   drawSoftCloudBank(ctx, width, height, elapsed);
   drawCloud(ctx, 52 - (elapsed * 6) % 460, 14, 0.2);
   drawCloud(ctx, 238 - (elapsed * 4) % 460, 22, 0.17);
@@ -42,6 +47,33 @@ function drawBackground(ctx: CanvasRenderingContext2D, width: number, height: nu
     const y = 8 + ((index * 11) % 24);
     drawSparkle(ctx, x, y, 1 + (index % 2));
   }
+}
+
+function drawDreamLights(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number, mood: number) {
+  if (mood <= 0.03) {
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = mood * 0.72;
+  ctx.fillStyle = 'rgba(255, 247, 220, 0.88)';
+
+  for (let index = 0; index < 6; index += 1) {
+    const x = (index * 67 + 34 - elapsed * (2.4 + index * 0.12)) % (width + 36);
+    const y = 7 + ((index * 13) % 24);
+    drawSparkle(ctx, x, y, 1.2 + (index % 2) * 0.5);
+  }
+
+  const moonX = width - 42 - ((elapsed * 1.4) % (width + 60));
+  ctx.fillStyle = 'rgba(255, 247, 220, 0.76)';
+  ctx.beginPath();
+  ctx.arc(moonX, 15, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(moonX + 3, 13, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawSoftCloudBank(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number) {
@@ -261,11 +293,11 @@ function drawCat(ctx: CanvasRenderingContext2D, snapshot: GameSnapshot) {
   ctx.restore();
 }
 
-function drawForeground(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number, groundY: number) {
-  ctx.fillStyle = PALETTE.ground;
+function drawForeground(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number, groundY: number, mood: number) {
+  ctx.fillStyle = mixColor(PALETTE.ground, '#dfb7ee', mood);
   ctx.fillRect(0, groundY, width, height - groundY);
 
-  ctx.strokeStyle = PALETTE.groundLine;
+  ctx.strokeStyle = mixColor(PALETTE.groundLine, '#9a6bb8', mood);
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, groundY + 1);
@@ -323,4 +355,15 @@ function roundedBlob(ctx: CanvasRenderingContext2D, x: number, y: number, width:
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.fill();
+}
+
+function mixColor(from: string, to: string, amount: number) {
+  const fromRgb = parseHexColor(from);
+  const toRgb = parseHexColor(to);
+  const mix = fromRgb.map((channel, index) => Math.round(channel + (toRgb[index] - channel) * amount));
+  return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
+}
+
+function parseHexColor(hexColor: string) {
+  return [1, 3, 5].map((startIndex) => Number.parseInt(hexColor.slice(startIndex, startIndex + 2), 16));
 }
