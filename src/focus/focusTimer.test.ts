@@ -87,6 +87,14 @@ describe('focus timer', () => {
   });
 
   it('can start break and bonus timers from the prompt', () => {
+    expect(focusTimerReducer(createFocusTimer(), { type: 'startFocus' })).toEqual({
+      mode: 'focus',
+      status: 'running',
+      remainingSeconds: FOCUS_SECONDS,
+      totalSeconds: FOCUS_SECONDS,
+      config: DEFAULT_TIMER_CONFIG
+    });
+
     expect(focusTimerReducer(createFocusTimer(), { type: 'startBreak' })).toEqual({
       mode: 'break',
       status: 'running',
@@ -122,6 +130,11 @@ describe('focus timer', () => {
       remainingSeconds: 7 * 60,
       totalSeconds: 7 * 60
     });
+    expect(focusTimerReducer(configured, { type: 'startFocus' })).toMatchObject({
+      mode: 'focus',
+      remainingSeconds: 50 * 60,
+      totalSeconds: 50 * 60
+    });
   });
 
   it('does not disrupt the remaining time of a running block when config changes', () => {
@@ -136,7 +149,7 @@ describe('focus timer', () => {
     });
   });
 
-  it('resets to focus after a break completes', () => {
+  it('prompts after a break completes so the next block can be chosen', () => {
     const breakDone = focusTimerReducer(
       {
         mode: 'break',
@@ -148,7 +161,34 @@ describe('focus timer', () => {
       { type: 'tick', seconds: 2 }
     );
 
-    expect(breakDone).toEqual(createFocusTimer());
+    expect(breakDone).toEqual({
+      mode: 'break',
+      status: 'prompt',
+      remainingSeconds: 0,
+      totalSeconds: BREAK_SECONDS,
+      config: DEFAULT_TIMER_CONFIG
+    });
+  });
+
+  it('prompts after a bonus focus block completes', () => {
+    const bonusDone = focusTimerReducer(
+      {
+        mode: 'bonus',
+        status: 'running',
+        remainingSeconds: 2,
+        totalSeconds: BONUS_SECONDS,
+        config: DEFAULT_TIMER_CONFIG
+      },
+      { type: 'tick', seconds: 2 }
+    );
+
+    expect(bonusDone).toEqual({
+      mode: 'bonus',
+      status: 'prompt',
+      remainingSeconds: 0,
+      totalSeconds: BONUS_SECONDS,
+      config: DEFAULT_TIMER_CONFIG
+    });
   });
 
   it('formats timer text compactly', () => {

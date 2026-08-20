@@ -513,6 +513,32 @@ button {
   flex: 0 0 auto;
 }
 
+.timer-bar-prompt {
+  gap: 4px;
+}
+
+.timer-bar-prompt .timer-message {
+  font-size: 11px;
+}
+
+.timer-bar-prompt .timer-choice {
+  height: 19px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.focus-choice {
+  color: #fff;
+  background: #9f315f;
+  border-color: #9f315f;
+}
+
+.focus-choice:hover {
+  color: #fff;
+  background: #7f254b;
+  border-color: #7f254b;
+}
+
 @keyframes soft-pulse {
   0%,
   100% {

@@ -393,6 +393,9 @@ export function App() {
         {timer.status === 'prompt' ? (
           <>
             <span className="timer-message">{focusMessage}</span>
+            <button className="timer-choice focus-choice" type="button" onClick={() => dispatchTimer({ type: 'startFocus' })}>
+              focus
+            </button>
             <button className="timer-choice" type="button" onClick={() => dispatchTimer({ type: 'startBreak' })}>
               rest
             </button>

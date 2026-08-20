@@ -21,6 +21,7 @@ export type FocusTimerAction =
   | { type: 'setMode'; mode: Extract<FocusTimerMode, 'focus' | 'break'> }
   | { type: 'tick'; seconds: number }
   | { type: 'configure'; config: TimerConfig }
+  | { type: 'startFocus' }
   | { type: 'startBreak' }
   | { type: 'startBonus' };
 
@@ -102,6 +103,15 @@ export function focusTimerReducer(state: FocusTimerState, action: FocusTimerActi
       };
     }
 
+    case 'startFocus':
+      return {
+        mode: 'focus',
+        status: 'running',
+        remainingSeconds: getTimerTotalSeconds('focus', state.config),
+        totalSeconds: getTimerTotalSeconds('focus', state.config),
+        config: state.config
+      };
+
     case 'startBreak':
       return {
         mode: 'break',
@@ -130,10 +140,6 @@ export function focusTimerReducer(state: FocusTimerState, action: FocusTimerActi
           ...state,
           remainingSeconds: state.remainingSeconds - action.seconds
         };
-      }
-
-      if (state.mode === 'break') {
-        return createFocusTimer(state.config);
       }
 
       return {
