@@ -151,8 +151,18 @@ describe('GameEngine', () => {
 
     const lateSpeed = engine.getSnapshot().speed;
     expect(lateSpeed).toBeGreaterThan(earlySpeed);
-    expect(lateSpeed).toBeLessThanOrEqual(305);
-    expect(lateSpeed).toBeCloseTo(305);
+    expect(lateSpeed).toBeLessThanOrEqual(325);
+    expect(lateSpeed).toBeCloseTo(325);
+  });
+
+  it('uses score progress as a speed floor so advancing makes the run faster', () => {
+    const engine = new GameEngine({ random: () => 0.5 });
+    engine.setNextSpawnDistanceForTest(999_999);
+    engine.setScoreForTest(20);
+    engine.jump();
+    engine.update(1 / 60);
+
+    expect(engine.getSnapshot().speed).toBeGreaterThanOrEqual(202);
   });
 
   it('starts with only simple mountains and a shorter first pixel gap', () => {
@@ -185,7 +195,22 @@ describe('GameEngine', () => {
     expect(far.getSnapshot().obstacles[0].x - near.getSnapshot().obstacles[0].x).toBeGreaterThanOrEqual(30);
   });
 
-  it('uses smaller effective gaps as the run reaches late phase', () => {
+  it('does not spawn a new challenge before the previous challenge and safe gap enter the window', () => {
+    const engine = new GameEngine({ random: () => 0.5 });
+    engine.setNextSpawnDistanceForTest(0);
+    engine.jump();
+    engine.update(1 / 60);
+
+    const firstSpawn = engine.getSnapshot();
+    expect(firstSpawn.obstacles).toHaveLength(1);
+
+    engine.setNextSpawnDistanceForTest(0);
+    engine.update(1 / 60);
+
+    expect(engine.getSnapshot().obstacles).toHaveLength(1);
+  });
+
+  it('leaves less reaction time as the run reaches late phase', () => {
     const early = new GameEngine({ random: sequenceRandom([0, 0.5, 0.5, 0]) });
     early.setNextSpawnDistanceForTest(0);
     early.jump();
@@ -198,8 +223,13 @@ describe('GameEngine', () => {
     late.jump();
     late.update(1 / 60);
 
-    expect(late.getSnapshot().phase).toBe('late');
-    expect(late.getSnapshot().nextSpawnDistancePx).toBeLessThan(early.getSnapshot().nextSpawnDistancePx);
+    const earlySnapshot = early.getSnapshot();
+    const lateSnapshot = late.getSnapshot();
+    const earlyReactionSeconds = earlySnapshot.nextSpawnDistancePx / earlySnapshot.speed;
+    const lateReactionSeconds = lateSnapshot.nextSpawnDistancePx / lateSnapshot.speed;
+
+    expect(lateSnapshot.phase).toBe('late');
+    expect(lateReactionSeconds).toBeLessThan(earlyReactionSeconds);
   });
 
   it('unlocks each difficulty phase much earlier than the old slow pacing', () => {
@@ -239,6 +269,7 @@ describe('GameEngine', () => {
 
     const spawnedVariants: ObstacleVariant[] = [];
     for (let index = 0; index < 3; index += 1) {
+      engine.clearObstaclesForTest();
       engine.setNextSpawnDistanceForTest(0);
       engine.update(1 / 60);
       const latest = engine.getSnapshot().obstacles.at(-1);

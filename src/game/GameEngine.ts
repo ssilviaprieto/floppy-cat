@@ -15,6 +15,7 @@ export type ObstacleKind = 'mountain' | 'bird';
 export type ObstacleVariant = 'smallMountain' | 'mediumMountain' | 'mountainPair' | 'mountainTriple' | 'lowBird' | 'highBird';
 
 export type DifficultyPhase = 'early' | 'middle' | 'bird' | 'late';
+type ChallengeAction = 'jump' | 'duck' | 'none';
 
 export type Obstacle = {
   id: number;
@@ -52,6 +53,7 @@ export type GameEngineOptions = {
 type ChallengeDefinition = {
   variant: ObstacleVariant;
   kind: ObstacleKind;
+  action: ChallengeAction;
   minScore: number;
   minSpeed: number;
   baseGap: number;
@@ -75,8 +77,9 @@ const CAT_X = 46;
 const GRAVITY = 920;
 const JUMP_IMPULSE = -238;
 const BASE_SPEED = 118;
-const MAX_SPEED = 305;
-const SPEED_ACCELERATION = 1.85;
+const MAX_SPEED = 325;
+const SPEED_ACCELERATION = 2.15;
+const SCORE_SPEED_STEP = 4.2;
 const INITIAL_SPAWN_DISTANCE = 104;
 const MIN_SPAWN_X_OFFSET = 10;
 const MAX_SPAWN_X_OFFSET = 44;
@@ -89,6 +92,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'smallMountain',
     kind: 'mountain',
+    action: 'jump',
     minScore: 0,
     minSpeed: 0,
     baseGap: 106,
@@ -102,6 +106,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'mediumMountain',
     kind: 'mountain',
+    action: 'jump',
     minScore: 3,
     minSpeed: 126,
     baseGap: 102,
@@ -115,6 +120,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'mountainPair',
     kind: 'mountain',
+    action: 'jump',
     minScore: 4,
     minSpeed: 132,
     baseGap: 104,
@@ -129,6 +135,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'mountainTriple',
     kind: 'mountain',
+    action: 'jump',
     minScore: 13,
     minSpeed: 166,
     baseGap: 100,
@@ -143,6 +150,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'highBird',
     kind: 'bird',
+    action: 'none',
     minScore: 7,
     minSpeed: 146,
     baseGap: 112,
@@ -158,6 +166,7 @@ const CHALLENGES: ChallengeDefinition[] = [
   {
     variant: 'lowBird',
     kind: 'bird',
+    action: 'duck',
     minScore: 8,
     minSpeed: 152,
     baseGap: 116,
@@ -184,6 +193,7 @@ export class GameEngine {
   private speed = BASE_SPEED;
   private distanceRan = 0;
   private distanceUntilNextObstacle = INITIAL_SPAWN_DISTANCE;
+  private gapAfterLastChallenge = INITIAL_SPAWN_DISTANCE;
   private nextObstacleId = 1;
   private companionMode = false;
   private cat: CatState = this.createCat();
@@ -272,7 +282,7 @@ export class GameEngine {
     }
 
     this.elapsed += dt;
-    this.speed = Math.min(MAX_SPEED, this.speed + SPEED_ACCELERATION * dt);
+    this.speed = this.calculateNextSpeed(dt);
 
     this.updateCat(dt);
     this.updateObstacles(dt);
@@ -328,6 +338,10 @@ export class GameEngine {
     this.distanceUntilNextObstacle = distance;
   }
 
+  clearObstaclesForTest() {
+    this.obstacles = [];
+  }
+
   getRecentChallengeVariantsForTest() {
     return [...this.recentChallengeVariants];
   }
@@ -339,6 +353,7 @@ export class GameEngine {
     this.speed = BASE_SPEED;
     this.distanceRan = 0;
     this.distanceUntilNextObstacle = INITIAL_SPAWN_DISTANCE;
+    this.gapAfterLastChallenge = INITIAL_SPAWN_DISTANCE;
     this.nextObstacleId = 1;
     this.cat = this.createCat();
     this.obstacles = [];
@@ -399,7 +414,10 @@ export class GameEngine {
   private updateObstacles(dt: number) {
     const traveled = this.speed * dt;
     this.distanceRan += traveled;
-    this.distanceUntilNextObstacle -= traveled;
+
+    if (this.obstacles.length === 0) {
+      this.distanceUntilNextObstacle -= traveled;
+    }
 
     for (const obstacle of this.obstacles) {
       obstacle.x -= (this.speed + (obstacle.speedOffset ?? 0)) * dt;
@@ -409,16 +427,19 @@ export class GameEngine {
       }
     }
 
-    let spawnGuard = 0;
-    while (this.distanceUntilNextObstacle <= 0 && spawnGuard < 3) {
-      const challenge = this.chooseChallenge();
-      const spawnedWidth = this.spawnChallenge(challenge);
-      this.distanceUntilNextObstacle += this.calculateGap(challenge, spawnedWidth);
-      this.rememberChallenge(challenge.variant);
-      spawnGuard += 1;
+    this.obstacles = this.obstacles.filter((obstacle) => obstacle.x + obstacle.width > -24);
+
+    if (this.obstacles.length > 0) {
+      this.distanceUntilNextObstacle = this.calculateDistanceUntilNextLogicalSpawn();
     }
 
-    this.obstacles = this.obstacles.filter((obstacle) => obstacle.x + obstacle.width > -24);
+    if (this.distanceUntilNextObstacle <= 0) {
+      const challenge = this.chooseChallenge();
+      const spawnedWidth = this.spawnChallenge(challenge);
+      this.gapAfterLastChallenge = this.calculateGap(challenge, spawnedWidth);
+      this.distanceUntilNextObstacle = this.calculateDistanceUntilNextLogicalSpawn();
+      this.rememberChallenge(challenge.variant);
+    }
   }
 
   private chooseChallenge() {
@@ -492,10 +513,31 @@ export class GameEngine {
       bird: 0.76,
       late: 0.66
     };
+    const recoverySeconds: Record<DifficultyPhase, Record<ChallengeAction, number>> = {
+      early: { jump: 0.72, duck: 0.5, none: 0.34 },
+      middle: { jump: 0.64, duck: 0.44, none: 0.3 },
+      bird: { jump: 0.58, duck: 0.4, none: 0.27 },
+      late: { jump: 0.52, duck: 0.36, none: 0.24 }
+    };
     const jitter = this.randomInteger(-18, 18);
-    const minGap = Math.max(78, Math.round((spawnedWidth * speedScale + challenge.baseGap + jitter) * phaseGapReduction[phase]));
+    const patternGap = Math.round((spawnedWidth * speedScale + challenge.baseGap + jitter) * phaseGapReduction[phase]);
+    const recoveryGap = Math.round(this.speed * recoverySeconds[phase][challenge.action]);
+    const minGap = Math.max(78, patternGap, recoveryGap);
     const maxGap = Math.round(minGap * MAX_GAP_COEFFICIENT);
     return this.randomInteger(minGap, maxGap);
+  }
+
+  private calculateNextSpeed(dt: number) {
+    const speedFromTime = this.speed + SPEED_ACCELERATION * dt;
+    const speedFromScore = BASE_SPEED + this.score * SCORE_SPEED_STEP;
+    return Math.min(MAX_SPEED, Math.max(speedFromTime, speedFromScore));
+  }
+
+  private calculateDistanceUntilNextLogicalSpawn() {
+    const rightmostEdge = this.obstacles.reduce((rightEdge, obstacle) => {
+      return Math.max(rightEdge, obstacle.x + obstacle.width);
+    }, 0);
+    return Math.max(0, rightmostEdge + this.gapAfterLastChallenge - this.width);
   }
 
   private getPhase(): DifficultyPhase {
