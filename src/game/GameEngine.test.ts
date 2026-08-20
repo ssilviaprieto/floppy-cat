@@ -20,6 +20,12 @@ function spawnOneLateChallenge(weightPick: number) {
   return engine.getSnapshot().obstacles;
 }
 
+function advanceUntilDistance(engine: GameEngine, distance: number) {
+  while (engine.getSnapshot().distanceRan < distance) {
+    engine.update(1 / 60);
+  }
+}
+
 describe('GameEngine', () => {
   it('starts ready and jumps into running state', () => {
     const engine = new GameEngine({ random: () => 0.5 });
@@ -176,25 +182,28 @@ describe('GameEngine', () => {
     expect(fast.getSnapshot().cat.vy).toBeLessThan(slow.getSnapshot().cat.vy);
   });
 
-  it('cycles the background mood smoothly with distance', () => {
+  it('keeps the dreamy night shift occasional instead of constantly pulsing', () => {
     const engine = new GameEngine({ random: () => 0.5 });
     engine.setNextSpawnDistanceForTest(999_999);
     engine.jump();
     const dayMood = engine.getSnapshot().mood;
 
-    while (engine.getSnapshot().distanceRan < 1400) {
-      engine.update(1 / 60);
-    }
+    advanceUntilDistance(engine, 8000);
+    const stillDayMood = engine.getSnapshot().mood;
 
+    advanceUntilDistance(engine, 12_000);
+    const fadingMood = engine.getSnapshot().mood;
+
+    advanceUntilDistance(engine, 15_000);
     const nightMood = engine.getSnapshot().mood;
 
-    while (engine.getSnapshot().distanceRan < 2800) {
-      engine.update(1 / 60);
-    }
-
+    advanceUntilDistance(engine, 19_000);
     const returnedMood = engine.getSnapshot().mood;
+
     expect(dayMood).toBeCloseTo(0);
-    expect(nightMood).toBeGreaterThan(0.75);
+    expect(stillDayMood).toBeLessThan(0.05);
+    expect(fadingMood).toBeGreaterThan(0.35);
+    expect(nightMood).toBeGreaterThan(0.9);
     expect(returnedMood).toBeLessThan(0.2);
   });
 

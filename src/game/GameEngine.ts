@@ -88,7 +88,7 @@ const MAX_GAP_COEFFICIENT = 1.42;
 const MAX_DUPLICATE_CHALLENGES = 2;
 const COYOTE_SECONDS = 0.1;
 const JUMP_BUFFER_SECONDS = 0.09;
-const MOOD_CYCLE_DISTANCE = 2800;
+const MOOD_CYCLE_DISTANCE = 20_000;
 
 const CHALLENGES: ChallengeDefinition[] = [
   {
@@ -572,7 +572,29 @@ export class GameEngine {
 
   private calculateMood() {
     const cycleProgress = (this.distanceRan % MOOD_CYCLE_DISTANCE) / MOOD_CYCLE_DISTANCE;
-    return (1 - Math.cos(cycleProgress * Math.PI * 2)) / 2;
+
+    if (cycleProgress < 0.48) {
+      return 0;
+    }
+
+    if (cycleProgress < 0.66) {
+      return this.smoothStep((cycleProgress - 0.48) / 0.18);
+    }
+
+    if (cycleProgress < 0.78) {
+      return 1;
+    }
+
+    if (cycleProgress < 0.96) {
+      return 1 - this.smoothStep((cycleProgress - 0.78) / 0.18);
+    }
+
+    return 0;
+  }
+
+  private smoothStep(progress: number) {
+    const clampedProgress = Math.min(1, Math.max(0, progress));
+    return clampedProgress * clampedProgress * (3 - 2 * clampedProgress);
   }
 
   private weightedChoice(challenges: ChallengeDefinition[], phase: DifficultyPhase) {
